@@ -8,12 +8,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# API Key
-openai.api_key = os.getenv("API_KEY")
-
+# Initialize FastAPI
 app = FastAPI()
 
-# CORS configuration
+# CORS policy
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,39 +19,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Set API key
+API_KEY = os.getenv("API_KEY")
+
 # Character personalities
 characters = {
     "Rachel": "Rachel is an affectionate, playful, flirty girlfriend personality. Respond warmly using romantic friendly language with emojis.",
-    "Alex": "Alex is a charming, supportive boyfriend personality.",
-    "Sophie": "Sophie is a bubbly, cute, cheerful personality."
+    "Alex": "Alex is a charming supportive boyfriend personality.",
+    "Sophie": "Sophie is a bubbly cheerful personality."
 }
 
-# Serve homepage UI
+# Homepage route (serves frontend)
 @app.get("/")
 async def root():
-    try:
-        if not os.path.exists("index.html"):
-            return HTMLResponse("<h1>Homepage not found</h1>")
+    if not os.path.exists("index.html"):
+        return HTMLResponse("<h1>Homepage not found</h1>")
 
-        with open("index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-
-        return HTMLResponse(content=html_content)
-
-    except:
-        return HTMLResponse("<h1>Server Error</h1>")
-
+    with open("index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
 
 # Conversation memory trimming
 def trim_conversation(conversation, max_messages=12):
     return conversation[-max_messages:]
-
 
 # Chat endpoint
 @app.post("/chat")
 async def chat(request: Request):
 
     try:
+        if not API_KEY:
+            return {"reply": "Server API key is missing.", "conversation": []}
+
+        openai.api_key = API_KEY
+
         data = await request.json()
 
         character_name = data.get("character", "Rachel")
@@ -61,10 +59,7 @@ async def chat(request: Request):
         conversation = data.get("conversation", [])
 
         if not user_input:
-            return {
-                "reply": "Please type a message.",
-                "conversation": conversation
-            }
+            return {"reply": "Please type a message.", "conversation": conversation}
 
         system_prompt = characters.get(
             character_name,
@@ -76,12 +71,11 @@ async def chat(request: Request):
                 {"role": "system", "content": system_prompt}
             ]
 
-        conversation.append({
-            "role": "user",
-            "content": user_input
-        })
+        conversation.append({"role": "user", "content": user_input})
 
         conversation = trim_conversation(conversation)
+
+        print("Calling OpenAI API...")
 
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -92,17 +86,16 @@ async def chat(request: Request):
 
         reply = response.choices[0].message.content
 
-        conversation.append({
-            "role": "assistant",
-            "content": reply
-        })
+        conversation.append({"role": "assistant", "content": reply})
 
         return {
             "reply": reply,
             "conversation": conversation
         }
 
-    except Exception:
+    except Exception as e:
+        print("CHAT ERROR:", str(e))
+
         return {
             "reply": "Sorry, something went wrong.",
             "conversation": []
