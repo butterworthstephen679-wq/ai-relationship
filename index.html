@@ -2,60 +2,153 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AI Chat Test Mode</title>
+<title>AI Relationship Platform</title>
+
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; }
-  #message { width: 70%; }
-  button { padding: 5px 10px; }
+
+body{
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    color:white;
+    margin:0;
+}
+
+/* Hero section */
+.hero{
+    text-align:center;
+    padding:40px;
+}
+
+.characters{
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    gap:20px;
+    padding:30px;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:18px;
+    text-align:center;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:scale(1.05);
+}
+
+.chatbox{
+    border-top:1px solid #334155;
+    padding:20px;
+}
+
+#chat{
+    height:350px;
+    overflow-y:auto;
+    background:#0f172a;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:15px;
+}
+
+input{
+    width:75%;
+    padding:12px;
+    border-radius:8px;
+    border:none;
+}
+
+button{
+    padding:12px 18px;
+    border:none;
+    border-radius:8px;
+    background:#3b82f6;
+    color:white;
+    cursor:pointer;
+}
+
 </style>
 </head>
+
 <body>
 
-<h2>AI Chat Test Mode</h2>
-<p style="color:red;">Responses are simulated; no real API calls will be made.</p>
+<div class="hero">
+    <h1>💖 AI Relationship Companion</h1>
+    <p>Choose a character and start chatting instantly</p>
+</div>
 
-<select id="character">
-  <option value="Rachel">Rachel 💖</option>
-  <option value="Alex">Alex 💙</option>
-  <option value="Sophie">Sophie 💛</option>
-</select>
+<div class="characters">
+
+<div class="card" onclick="selectCharacter('Rachel')">
+<h2>Rachel 💕</h2>
+<p>Affectionate romantic girlfriend personality</p>
+</div>
+
+<div class="card" onclick="selectCharacter('Alex')">
+<h2>Alex 💙</h2>
+<p>Charming supportive boyfriend personality</p>
+</div>
+
+<div class="card" onclick="selectCharacter('Sophie')">
+<h2>Sophie 💛</h2>
+<p>Bubbly cute cheerful personality</p>
+</div>
+
+</div>
+
+<div class="chatbox">
+
+<h2 id="selectedCharacter">Select a character</h2>
 
 <div id="chat"></div>
 
-<input type="text" id="message" placeholder="Type your message...">
+<input id="message" placeholder="Type message...">
 <button onclick="sendMessage()">Send</button>
 
+</div>
+
 <script>
-let conversation = [];
 
-async function sendMessage() {
-    const character = document.getElementById("character").value;
-    const message = document.getElementById("message").value;
-    if (!message) return;
+let conversation=[];
+let character="Rachel";
 
-    // Show user's message
-    const chatDiv = document.getElementById("chat");
-    chatDiv.innerHTML += `<b>You:</b> ${message}<br>`;
-    document.getElementById("message").value = '';
-
-    try {
-        const response = await fetch("http://localhost:8000/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ character, message, conversation })
-        });
-
-        const data = await response.json();
-        conversation = data.conversation; // update memory
-        chatDiv.innerHTML += `<b>${character}:</b> ${data.reply}<br>`;
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-
-    } catch (err) {
-        chatDiv.innerHTML += `<b>System:</b> Could not connect to backend.<br>`;
-        console.error(err);
-    }
+function selectCharacter(name){
+    character=name;
+    conversation=[];
+    document.getElementById("selectedCharacter").innerText="Chatting with "+name;
+    document.getElementById("chat").innerHTML="";
 }
+
+async function sendMessage(){
+
+    let message=document.getElementById("message").value;
+    if(!message) return;
+
+    let chat=document.getElementById("chat");
+
+    chat.innerHTML+=`<b>You:</b> ${message}<br>`;
+    document.getElementById("message").value="";
+
+    const response=await fetch("/chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            character:character,
+            message:message,
+            conversation:conversation
+        })
+    });
+
+    const data=await response.json();
+
+    conversation=data.conversation;
+
+    chat.innerHTML+=`<b>${character}:</b> ${data.reply}<br>`;
+    chat.scrollTop=chat.scrollHeight;
+}
+
 </script>
 
 </body>
