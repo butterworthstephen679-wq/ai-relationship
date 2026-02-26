@@ -2,6 +2,7 @@ import os
 import openai
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,7 +13,7 @@ openai.api_key = os.getenv("API_KEY")
 
 app = FastAPI()
 
-# CORS policy (allow frontend requests)
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,19 +23,31 @@ app.add_middleware(
 
 # Character personalities
 characters = {
-    "Rachel": "Rachel is an affectionate, playful, flirty girlfriend personality. Use warm romantic friendly language with emojis.",
-    "Alex": "Alex is a charming, supportive, friendly boyfriend personality.",
+    "Rachel": "Rachel is an affectionate, playful, flirty girlfriend personality. Respond warmly using romantic friendly language with emojis.",
+    "Alex": "Alex is a charming, supportive boyfriend personality.",
     "Sophie": "Sophie is a bubbly, cute, cheerful personality."
 }
 
-# Root route (homepage health check + prevents Render 404)
+# Serve homepage UI
 @app.get("/")
 async def root():
-    return {"message": "AI relationship platform is running"}
+    try:
+        if not os.path.exists("index.html"):
+            return HTMLResponse("<h1>Homepage not found</h1>")
 
-# Limit conversation memory to reduce token cost
+        with open("index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        return HTMLResponse(content=html_content)
+
+    except:
+        return HTMLResponse("<h1>Server Error</h1>")
+
+
+# Conversation memory trimming
 def trim_conversation(conversation, max_messages=12):
     return conversation[-max_messages:]
+
 
 # Chat endpoint
 @app.post("/chat")
@@ -58,7 +71,6 @@ async def chat(request: Request):
             characters["Rachel"]
         )
 
-        # Start conversation memory if empty
         if len(conversation) == 0:
             conversation = [
                 {"role": "system", "content": system_prompt}
@@ -69,7 +81,6 @@ async def chat(request: Request):
             "content": user_input
         })
 
-        # Cost optimization: trim memory history
         conversation = trim_conversation(conversation)
 
         response = openai.chat.completions.create(
@@ -93,6 +104,6 @@ async def chat(request: Request):
 
     except Exception:
         return {
-            "reply": "Sorry, something went wrong. Please try again.",
+            "reply": "Sorry, something went wrong.",
             "conversation": []
         }
