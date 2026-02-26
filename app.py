@@ -8,19 +8,17 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Initialize FastAPI
+API_KEY = os.getenv("API_KEY")
+
 app = FastAPI()
 
-# CORS policy
+# Allow frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Set API key
-API_KEY = os.getenv("API_KEY")
 
 # Character personalities
 characters = {
@@ -29,7 +27,7 @@ characters = {
     "Sophie": "Sophie is a bubbly cheerful personality."
 }
 
-# Homepage route (serves frontend)
+# Homepage route
 @app.get("/")
 async def root():
     if not os.path.exists("index.html"):
@@ -38,9 +36,11 @@ async def root():
     with open("index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
-# Conversation memory trimming
+
+# Trim conversation memory
 def trim_conversation(conversation, max_messages=12):
     return conversation[-max_messages:]
+
 
 # Chat endpoint
 @app.post("/chat")
@@ -48,9 +48,9 @@ async def chat(request: Request):
 
     try:
         if not API_KEY:
-            return {"reply": "Server API key is missing.", "conversation": []}
+            return {"reply": "Server API key missing.", "conversation": []}
 
-        openai.api_key = API_KEY
+        client = openai.OpenAI(api_key=API_KEY)
 
         data = await request.json()
 
@@ -59,7 +59,10 @@ async def chat(request: Request):
         conversation = data.get("conversation", [])
 
         if not user_input:
-            return {"reply": "Please type a message.", "conversation": conversation}
+            return {
+                "reply": "Please type a message.",
+                "conversation": conversation
+            }
 
         system_prompt = characters.get(
             character_name,
@@ -77,7 +80,7 @@ async def chat(request: Request):
 
         print("Calling OpenAI API...")
 
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=conversation,
             temperature=0.8,
@@ -86,7 +89,10 @@ async def chat(request: Request):
 
         reply = response.choices[0].message.content
 
-        conversation.append({"role": "assistant", "content": reply})
+        conversation.append({
+            "role": "assistant",
+            "content": reply
+        })
 
         return {
             "reply": reply,
