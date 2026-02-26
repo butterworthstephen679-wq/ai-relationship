@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Chat Test Mode</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; }
+  #message { width: 70%; }
+  button { padding: 5px 10px; }
+</style>
+</head>
+<body>
+
+<h2>AI Chat Test Mode</h2>
+<p style="color:red;">Responses are simulated; no real API calls will be made.</p>
+
+<select id="character">
+  <option value="Rachel">Rachel 💖</option>
+  <option value="Alex">Alex 💙</option>
+  <option value="Sophie">Sophie 💛</option>
+</select>
+
+<div id="chat"></div>
+
+<input type="text" id="message" placeholder="Type your message...">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+let conversation = [];
+
+async function sendMessage() {
+    const character = document.getElementById("character").value;
+    const message = document.getElementById("message").value;
+    if (!message) return;
+
+    // Show user's message
+    const chatDiv = document.getElementById("chat");
+    chatDiv.innerHTML += `<b>You:</b> ${message}<br>`;
+    document.getElementById("message").value = '';
+
+    try {
+        const response = await fetch("http://localhost:8000/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ character, message, conversation })
+        });
+
+        const data = await response.json();
+        conversation = data.conversation; // update memory
+        chatDiv.innerHTML += `<b>${character}:</b> ${data.reply}<br>`;
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    } catch (err) {
+        chatDiv.innerHTML += `<b>System:</b> Could not connect to backend.<br>`;
+        console.error(err);
+    }
+}
+</script>
+
+</body>
+</html>
